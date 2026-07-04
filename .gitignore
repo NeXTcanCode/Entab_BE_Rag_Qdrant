@@ -1,6 +1,6 @@
 .env
 .env.*
-!.env.example
+.env.example
 env.txt
 .env.txt
 environment.txt
