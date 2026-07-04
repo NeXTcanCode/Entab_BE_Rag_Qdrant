@@ -24,6 +24,9 @@ Trees APIs. It contains no GitHub create, update, commit, or delete operations.
    Health check: /health
    ```
 
+   A compatibility `main.py` is included, so Render's default
+   `uvicorn main:app --host 0.0.0.0 --port $PORT` command also works.
+
 4. Add the secret environment variables shown in `.env.example` through the
    Render dashboard. Never commit `.env`.
 
