@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: next-code-navigator-backend
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn user_embed_question:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.4
+      - key: QDRANT_COLLECTION
+        value: absb_school_code
+      - key: OLLAMA_CHAT_TIMEOUT
+        value: "2"
+      - key: GITHUB_OWNER
+        value: likhilbalakrishnan
+      - key: GITHUB_REPO
+        value: Websites
+      - key: GITHUB_BRANCH
+        value: main
+      - key: GITHUB_CACHE_SECONDS
+        value: "300"
+      - key: GROQ_MODEL
+        value: llama-3.1-8b-instant
+      - key: QDRANT_URL
+        sync: false
+      - key: QDRANT_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: ALLOWED_ORIGINS
+        value: https://next-doesnt-like-css.netlify.app
