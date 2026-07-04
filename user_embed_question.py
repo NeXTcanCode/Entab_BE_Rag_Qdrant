@@ -498,12 +498,24 @@ def github_file_text(repo_path: str) -> str:
 
 
 def source_folder(payload: dict[str, Any]) -> str:
+    school_code = str(payload.get("school_code") or "").strip()
+    school_name = str(payload.get("school_name") or "").strip()
+    if school_name:
+        # GitHub stores each project under ``{school_code}-{school_name}``.
+        # Existing Qdrant records may contain either the complete directory
+        # name (for example ``ABSB-Anand-Bhawan``) or only the readable name.
+        folder = school_name
+        if school_code and not school_name.upper().startswith(
+            f"{school_code.upper()}-"
+        ):
+            folder = f"{school_code}-{school_name}"
+        return normalized_repo_path(folder)
+
+    # source_root contains a local Mac path in older Qdrant records. Keep it
+    # only as a compatibility fallback; it must never override school_name.
     source_root = str(payload.get("source_root") or "").strip()
     if source_root:
         return normalized_repo_path(PurePosixPath(source_root.replace("\\", "/")).name)
-    school_name = str(payload.get("school_name") or "").strip()
-    if school_name:
-        return normalized_repo_path(school_name)
     raise RuntimeError("Qdrant payload is missing school_name/source_root")
 
 
