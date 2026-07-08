@@ -52,6 +52,12 @@ DEFAULT_GITHUB_API_BASE = "https://api.github.com"
 
 MAX_SOURCE_CHARS = 40_000
 OUTPUT_MODES = {"code", "css", "both"}
+OUT_OF_SCOPE_ANSWER = "I can only answer questions supported by the selected school codebase."
+CODE_QUERY_TERMS = {
+    "api", "class", "code", "component", "css", "dependency", "element",
+    "file", "function", "header", "html", "import", "javascript", "jsx",
+    "layout", "page", "prop", "react", "section", "source", "style",
+}
 
 
 def load_env_file(path: Path) -> None:
@@ -1135,6 +1141,37 @@ def context_for_llm(contexts: list[dict[str, Any]]) -> str:
     return "\n\n".join(blocks)
 
 
+def is_context_question(question: str, contexts: list[dict[str, Any]]) -> bool:
+    """Reject unrelated prompts before they can consume a hosted LLM token."""
+    words = set(re.findall(r"[a-z][a-z0-9_-]{2,}", question.lower()))
+    if words & CODE_QUERY_TERMS:
+        return True
+
+    identifiers: set[str] = set()
+    for context in contexts:
+        metadata = [
+            context.get("school_code", ""),
+            context.get("school_name", ""),
+            context.get("section_name", ""),
+            *context.get("primary_files", []),
+            *context.get("style_files", []),
+            *context.get("snippet_files", []),
+            *context.get("dependencies", []),
+        ]
+        identifiers.update(
+            re.findall(r"[a-z][a-z0-9_-]{2,}", " ".join(map(str, metadata)).lower())
+        )
+    if words & identifiers:
+        return True
+
+    # Permit narrow conversational follow-ups after a codebase answer.
+    return bool(re.fullmatch(
+        r"\s*(why|how|explain|continue|more|show more|what does (it|this) do)\??\s*",
+        question,
+        flags=re.IGNORECASE,
+    ))
+
+
 def grounded_chat_messages(
     question: str,
     contexts: list[dict[str, Any]],
@@ -1516,7 +1553,9 @@ def v1_chat_completions(req: ChatCompletionRequest):
             return JSONResponse(openai_chat_response(answer, req.model))
 
         section_name, contexts = retrieve_contexts(retrieval_anchor, school_code, output_mode, req.top_k)
-        if should_return_source_directly(user_messages, latest_question):
+        if not is_context_question(latest_question, contexts):
+            answer = OUT_OF_SCOPE_ANSWER
+        elif should_return_source_directly(user_messages, latest_question):
             answer = format_source_answer(school_code, section_name, output_mode, contexts)
         else:
             answer, _provider = chat_with_fallback(latest_question, contexts, req.messages)
