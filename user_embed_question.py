@@ -1489,7 +1489,11 @@ def source_chat(req: SourceChatRequest) -> dict[str, Any]:
     relative_path = req.source_file_path.strip()
     try:
         context = exact_source_context(code, relative_path, req.output_mode)
-        answer, provider = chat_with_fallback(user_messages[-1], [context], req.messages)
+        if not is_context_question(user_messages[-1], [context]):
+            answer = OUT_OF_SCOPE_ANSWER
+            provider = "local"
+        else:
+            answer, provider = chat_with_fallback(user_messages[-1], [context], req.messages)
     except HTTPException:
         raise
     except Exception as exc:
